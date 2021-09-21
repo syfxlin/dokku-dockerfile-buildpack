@@ -1,0 +1,16 @@
+{% import '../inject.twig' as i %}
+{% include '../base.twig' with { 'name': 'builder' } %}
+
+{# Install php #}
+{% include './_install.twig' %}
+
+{# Copy project #}
+WORKDIR /app
+COPY . .
+{% include './_copy.twig' %}
+
+{# Inject dockerfile #}
+{{ i.inject(php.run) }}
+
+{# Define #}
+{% include './_define.twig' %}

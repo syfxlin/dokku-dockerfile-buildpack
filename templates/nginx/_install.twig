@@ -1,0 +1,85 @@
+{# Install nginx #}
+
+{# Define version #}
+ENV NGINX_VERSION {{ nginx.version | default(__conf.nginx.version) }}
+
+{# Build nginx #}
+{# Add nginx user and group #}
+RUN addgroup -g 101 nginx && adduser -u 101 -G nginx -h /var/cache/nginx -s /bin/sh -D nginx
+{# Add runtime packages #}
+RUN apk add --no-cache ca-certificates openssl pcre zlib tzdata
+{# Add build packages #}
+RUN apk add --no-cache --virtual build_deps build-base linux-headers openssl-dev pcre-dev wget zlib-dev \
+    {# Download nginx and extract #}
+    && wget "http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" \
+    && tar -zxvf "nginx-$NGINX_VERSION.tar.gz" \
+    && rm -rf "nginx-$NGINX_VERSION.tar.gz" \
+    && cd "nginx-$NGINX_VERSION" \
+    {# Build #}
+    && ./configure \
+        --prefix=/etc/nginx \
+        --sbin-path=/usr/sbin/nginx \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --http-log-path=/var/log/nginx/access.log \
+        --pid-path=/var/run/nginx.pid \
+        --lock-path=/var/run/nginx.lock \
+        --http-client-body-temp-path=/var/cache/nginx/client_temp \
+        --http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+        --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+        --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+        --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+        --user=nginx \
+        --group=nginx \
+        --with-http_ssl_module \
+        --with-http_realip_module \
+        --with-http_addition_module \
+        --with-http_sub_module \
+        --with-http_dav_module \
+        --with-http_flv_module \
+        --with-http_mp4_module \
+        --with-http_gunzip_module \
+        --with-http_gzip_static_module \
+        --with-http_random_index_module \
+        --with-http_secure_link_module \
+        --with-http_stub_status_module \
+        --with-http_auth_request_module \
+        --with-mail \
+        --with-mail_ssl_module \
+        --with-file-aio \
+        --with-threads \
+        --with-stream \
+        --with-stream_ssl_module \
+        --with-stream_realip_module \
+        --with-http_slice_module \
+        --with-http_v2_module \
+        {{ nginx.configure_args | default('') }} \
+    && make \
+    && make install \
+    {# Link log to stdio #}
+    && ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log \
+    && mkdir /etc/nginx/conf.d \
+    {# Clear #}
+    && cd .. && rm -rf "nginx-$NGINX_VERSION" \
+    && apk del build_deps \
+    {# Add envsubst to runtime, only copy envsubst #}
+    && apk add --no-cache --virtual .gettext gettext \
+    && mv /usr/bin/envsubst /tmp/ \
+      \
+      && runDeps="$( \
+          scanelf --needed --nobanner /tmp/envsubst \
+              | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+              | sort -u \
+              | xargs -r apk info --installed \
+              | sort -u \
+      )" \
+    && apk add --no-cache $runDeps \
+    && apk del .gettext \
+    && mv /tmp/envsubst /usr/local/bin/
+
+{# Copy entrypoint script #}
+COPY .buildin/entrypoint-nginx.sh /
+COPY .buildin/docker-entrypoint.d /docker-entrypoint.d
+COPY .buildin/nginx.conf /etc/nginx/nginx.conf
+ENTRYPOINT ["/entrypoint-nginx.sh"]

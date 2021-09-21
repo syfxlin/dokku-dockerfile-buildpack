@@ -1,0 +1,20 @@
+FROM alpine:{{ alpine.version | default('latest') }}{{ name ? (' as ' + name) : '' }}
+
+ENV TZ={{ tz | default('Asia/Shanghai') }}
+
+{% if env %}
+{% for e in env %}
+{% if "=" in e %}
+ENV {{ e }}
+{% else %}
+ENV {{ e }}={{ attribute(_env, e) }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+RUN apk update && apk add --no-cache curl wget sed nano tzdata bash bash-completion
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+{% if alpine.package %}
+RUN apk add --no-cache {{ alpine.package | join(' ') }}
+{% endif %}

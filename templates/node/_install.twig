@@ -1,0 +1,38 @@
+{# Install nodejs #}
+
+{# Define version #}
+ENV NODE_VERSION {{ nodejs.version | default(__conf.node.version) }}
+ENV YARN_VERSION {{ nodejs.yarn_version | default(__conf.node.yarn_version) }}
+
+{# Install node #}
+{# Add user and group #}
+RUN addgroup -g 1000 node \
+    && adduser -u 1000 -G node -s /bin/sh -D node \
+    {# Add runtime packages #}
+    && apk add --no-cache libstdc++ \
+    {# Download node, alpine use musl build package #}
+    && ARCH= && alpineArch="$(apk --print-arch)" && case "${alpineArch##*-}" in x86_64) ARCH='x64' ;; *) ;; esac \
+    && wget "https://unofficial-builds.nodejs.org/download/release/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH-musl.tar.gz" \
+    && tar -zxvf "node-v$NODE_VERSION-linux-$ARCH-musl.tar.gz" -C /usr/local --strip-components=1 --no-same-owner \
+    && rm "node-v$NODE_VERSION-linux-$ARCH-musl.tar.gz" \
+    {# Link binary #}
+    && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
+    {# Test #}
+    && node --version \
+    && npm --version
+
+{# Install yarn #}
+{# Download yarn package #}
+RUN wget "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz" \
+    && mkdir -p /opt \
+    && tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/ \
+    {# Link binary #}
+    && ln -s /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn \
+    && ln -s /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg \
+    && rm yarn-v$YARN_VERSION.tar.gz \
+    {# Test #}
+    && yarn --version
+
+{# Copy entrypoint script #}
+COPY .buildin/entrypoint-node.sh /
+ENTRYPOINT ["/entrypoint-node.sh"]

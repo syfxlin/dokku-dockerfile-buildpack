@@ -1,0 +1,14 @@
+nginx:
+  version: 1.21.3
+node:
+  version: 14.17.6
+  yarn_version: 1.22.5
+  copy:
+    - nginx:entrypoint-nginx.sh
+    - nginx:docker-entrypoint.d
+    - nginx:nginx.conf.twig
+php:
+  version: 8.0.10
+  copy:
+    - nginx:entrypoint-nginx.sh
+    - nginx:docker-entrypoint.d

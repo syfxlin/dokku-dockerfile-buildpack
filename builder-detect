@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+APP="$1"; SOURCECODE_WORK_DIR="$2"
+
+if [[ -f "$SOURCECODE_WORK_DIR/.service.yml" ]]; then
+  echo -n "service"
+fi

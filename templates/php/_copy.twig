@@ -1,0 +1,8 @@
+{# Copy php config #}
+{% if '.php.d' | exists %}
+COPY .php.d/ /usr/local/etc/php/conf.d/
+{% endif %}
+{# Copy php-fpm config #}
+{% if '.php-fpm.d' | exists %}
+COPY .php-fpm.d/ /usr/local/etc/php-fpm.d/
+{% endif %}

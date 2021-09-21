@@ -1,0 +1,52 @@
+type: nginx # 使用的模板类型：nginx, node, php, docker
+alpine:
+  version: latest # alpine 镜像版本
+  package: # 全局安装的包
+    - curl
+tz: Asia/Shanghai # 时区
+env: # 环境变量，这里的环境变量由 env 文件提供，在 dokku 中为 config 里设置
+  - TEST # 从环境捕获
+  - DEF=define # 直接定义
+# 由于 docker build 阶段不支持导入环境变量
+# 导致 dokku 中配置的环境变量无法在 build 阶段应用，该选项就是为了缓解这种情况存在的。
+# 如果配置了该选项，相应的 env 文件将复制到执行的位置，相对于项目目录
+env_file: .env
+nginx:
+  version: 1.21.3 # nginx 版本
+  configure_args: --with-http_v2_module # 编译添加的参数
+  run: # 提供一种在环境准备完成后做一些事的机制，比如导出端口，设置环境变量等
+    - apk add --no-cache git
+    - add:.buildin/nginx.conf /nginx.conf
+    - copy:.buildin/nginx.conf /nginx.conf
+    - arg:THIS_IS_ARG
+    - env:DEF_ENV_THIS ${THIS_IS_ARG}
+    - expose:443/udp
+  # config
+  root: public # 网站目录，默认情况下只会复制该目录到容器中
+  charset: utf-8 # 字符集
+  index: index.html # 主文件
+  error_page:
+    404: 404/ # 错误页，key: 错误代码，value: 错误页 URL
+  basic_auth: /etc/.httpasswd # 认证文件，dokku 无需使用
+  canonical_host: ixk.me # 主要域名，常用于将 www 域名 301 到非 www 域名
+  disable_try: false # 禁用默认的 try_file
+  disable_cache: false # 禁用默认的缓存配置
+  dotfile: false # 是否启用 dotfile 访问
+nodejs:
+  version: 14.17.6 # nodejs 版本
+  yarn_version: 1.22.5 # yarn 版本
+  env: cli # 环境选择，cli 环境不包括 nginx，如 node 后端，web 环境包括 nginx，用于静态页面，如 react 编译发布
+  cmd: node index.js # 修改默认的启动命令，支持数组方式，在 cli 环境生效
+  run: # 与 nginx.run 类似
+    - yarn install
+    - yarn build
+php:
+  version: 8.0.10 # php 版本
+  composer_version: 1 # composer 版本
+  extensions: # php 扩展
+    - gd
+    - xdebug
+  configure_args: --with-pear # 编译添加的参数
+  cmd: php -S # 修改默认的启动命令，支持数组方式，在 cli 环境生效
+  run: # 与 nginx.run 类似
+    - composer install

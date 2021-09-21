@@ -1,0 +1,14 @@
+{#
+if web env:
+  use nginx cmd
+if cli env:
+  if define nodejs.cmd, use it
+  find package.json
+    found: check yarn.lock or package-lock.json, use [yarn start] or [npm start], if not found lock file, fallback use npm
+    no found: check server.js, app.js, main.js, index.js, use [node xxx.js], if not found js, fallback use node
+#}
+{% if nodejs.env == 'web' %}
+{% include './_run_nginx.twig' %}
+{% else %}
+{% include './_run_node.twig' %}
+{% endif %}

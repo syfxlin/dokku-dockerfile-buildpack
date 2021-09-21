@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
+source "$PLUGIN_CORE_AVAILABLE_PATH/config/functions"
+BUILDER_TYPE="$1" APP="$2" SOURCECODE_WORK_DIR="$3"
+
+if [[ "$BUILDER_TYPE" == "service" ]]; then
+  # Write env file to source
+  TMP_ENV_FILE=$(mktemp "/tmp/dokku-$BUILDER_TYPE-$APP.XXXXXX")
+  rm -rf "$TMP_ENV_FILE"
+  config_export app "$APP" --format envfile --merged | xargs -n1 >"$TMP_ENV_FILE"
+  # Build dockerfile
+  "$PLUGIN_ENABLED_PATH/dockerfile-buildpack/bin/dus" -d "$PLUGIN_ENABLED_PATH/dockerfile-buildpack/templates" -c "$SOURCECODE_WORK_DIR/.service.yml" -o "$SOURCECODE_WORK_DIR" -e "$TMP_ENV_FILE"
+  # Pre build
+  dokku_log_info1 "Run pre-build script"
+  if [[ -f "$SOURCECODE_WORK_DIR/.build.d/pre_build.sh" ]]; then
+      "$SOURCECODE_WORK_DIR/.build.d/pre_build.sh"
+  fi
+  # Build docker
+  if [[ -f "$PLUGIN_ENABLED_PATH/builder-dockerfile/builder-build" ]]; then
+    "$PLUGIN_ENABLED_PATH/builder-dockerfile/builder-build" "dockerfile" "$APP" "$SOURCECODE_WORK_DIR"
+  fi
+  # Post build
+  dokku_log_info1 "Run post-build script"
+  if [[ -f "$SOURCECODE_WORK_DIR/.build.d/post_build.sh" ]]; then
+      "$SOURCECODE_WORK_DIR/.build.d/post_build.sh"
+  fi
+fi

@@ -1,0 +1,5 @@
+{% if php.cmd %}
+CMD {{ php.cmd is iterable ? (php.cmd | json_encode) : php.cmd }}
+{% else %}
+CMD ["php"]
+{% endif %}

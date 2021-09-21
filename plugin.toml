@@ -1,0 +1,5 @@
+[plugin]
+description = "dokku pre-dockerfile-build hook plugin"
+version = "0.1"
+[plugin.config]
+

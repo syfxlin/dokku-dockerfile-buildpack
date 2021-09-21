@@ -1,0 +1,14 @@
+{% import '../inject.twig' as i %}
+{% include '../base.twig' with { 'name': 'builder' } %}
+
+{# Install nodejs #}
+{% include './_install.twig' %}
+
+{# Copy project #}
+WORKDIR /app
+COPY . .
+
+{# Inject dockerfile #}
+{{ i.inject(nodejs.run) }}
+
+{% include './_define.twig' %}

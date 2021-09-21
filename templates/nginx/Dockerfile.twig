@@ -1,0 +1,18 @@
+{% import '../inject.twig' as i %}
+{% include '../base.twig' %}
+
+{# Install nginx #}
+{% include './_install.twig' %}
+
+{# Copy project #}
+WORKDIR /app
+{# Copy by nginx.root #}
+{% set nginx_root = nginx.root | default('public') %}
+COPY ./{{ nginx_root }} ./{{ nginx_root }}
+{% include './_copy.twig' %}
+
+{# Inject dockerfile #}
+{{ i.inject(nginx.run) }}
+
+{# Define #}
+{% include './_define.twig' %}

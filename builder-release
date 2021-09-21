@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
+source "$PLUGIN_CORE_AVAILABLE_PATH/config/functions"
+BUILDER_TYPE="$1" APP="$2" IMAGE_TAG="$3"
+
+if [[ "$BUILDER_TYPE" == "service" ]]; then
+    if [[ -f "$PLUGIN_ENABLED_PATH/builder-dockerfile/builder-release" ]]; then
+        "$PLUGIN_ENABLED_PATH/builder-dockerfile/builder-release" "dockerfile" "$APP" "$IMAGE_TAG"
+    fi
+fi

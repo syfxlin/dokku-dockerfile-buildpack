@@ -1,0 +1,4 @@
+{# Copy nginx config #}
+{% if '.nginx.d' | exists %}
+  COPY .nginx.d/ /etc/nginx/conf.d/
+{% endif %}
