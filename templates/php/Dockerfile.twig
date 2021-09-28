@@ -1,5 +1,7 @@
-{% import '../inject.twig' as i %}
-{% include '../base.twig' with { 'name': 'builder' } %}
+{% include '../base.twig' %}
+
+{# Inject dockerfile #}
+{{ php.run_before | join('\n') }}
 
 {# Install php #}
 {% include './_install.twig' %}
@@ -7,10 +9,29 @@
 {# Copy project #}
 WORKDIR /app
 COPY . .
-{% include './_copy.twig' %}
+
+{# Copy php config #}
+{% if exists('.php.d') %}
+  COPY .php.d/ /usr/local/etc/php/conf.d/
+{% endif %}
 
 {# Inject dockerfile #}
-{{ i.inject(php.run) }}
+{{ php.run | join('\n') }}
 
-{# Define #}
-{% include './_define.twig' %}
+{# Define image #}
+{% if not buildpack.next %}
+  ENTRYPOINT ["/entrypoint-php.sh"]
+  {% if php.cmd %}
+    CMD {{ php.cmd is iterable ? (php.cmd | json_encode) : php.cmd }}
+  {% elseif exists('server.php') %}
+    CMD ["php", "server.php"]
+  {% elseif exists('app.php') %}
+    CMD ["php", "app.php"]
+  {% elseif exists('main.php') %}
+    CMD ["php", "main.php"]
+  {% elseif exists('index.php') %}
+    CMD ["php", "index.php"]
+  {% else %}
+    CMD ["php"]
+  {% endif %}
+{% endif %}

@@ -1,18 +1,32 @@
-{% import '../inject.twig' as i %}
 {% include '../base.twig' %}
+
+{# Inject dockerfile #}
+{{ nginx.run_before | join('\n') }}
 
 {# Install nginx #}
 {% include './_install.twig' %}
 
 {# Copy project #}
 WORKDIR /app
-{# Copy by nginx.root #}
+{# Copy nginx root #}
 {% set nginx_root = nginx.root | default('public') %}
-COPY ./{{ nginx_root }} ./{{ nginx_root }}
-{% include './_copy.twig' %}
+{% if buildpack.prev %}
+  COPY --from={{ buildpack.prev }}-builder /app/{{ nginx_root }} ./{{ nginx_root }}
+{% else %}
+  COPY ./{{ nginx_root }} ./{{ nginx_root }}
+{% endif %}
+{# Copy nginx config #}
+{% if exists('.nginx.d') %}
+  COPY .nginx.d/ /etc/nginx/conf.d/
+{% endif %}
 
 {# Inject dockerfile #}
-{{ i.inject(nginx.run) }}
+{{ nginx.run | join('\n') }}
 
-{# Define #}
-{% include './_define.twig' %}
+{# Define image #}
+{% if not buildpack.next %}
+  EXPOSE 80
+  STOPSIGNAL SIGQUIT
+  ENTRYPOINT ["/entrypoint-nginx.sh"]
+  CMD ["nginx", "-g", "daemon off;"]
+{% endif %}

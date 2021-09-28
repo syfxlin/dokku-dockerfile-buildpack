@@ -30,7 +30,7 @@ http {
       https on;
   }
   # setup the scheme to use on redirects
-  map $http_x_forwarded_proto $redirect_scheme {
+  map $http_x_forwarded_proto $proxy_scheme {
       default http;
       http http;
       https https;
@@ -109,7 +109,7 @@ http {
       fastcgi_param  DOCUMENT_URI       $document_uri;
       fastcgi_param  DOCUMENT_ROOT      $document_root;
       fastcgi_param  SERVER_PROTOCOL    $server_protocol;
-      fastcgi_param  REQUEST_SCHEME     $scheme; # TODO: check
+      fastcgi_param  REQUEST_SCHEME     $proxy_scheme;
       fastcgi_param  HTTPS              $proxy_https if_not_empty;
 
       fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;

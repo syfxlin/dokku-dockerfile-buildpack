@@ -1,0 +1,48 @@
+{% include '../base.twig' %}
+
+{# Inject dockerfile #}
+{{ nodejs.run_before | join('\n') }}
+
+{# Install nodejs #}
+{% include './_install.twig' %}
+
+{# Copy project #}
+WORKDIR /app
+COPY . .
+
+{# node_modules install #}
+{% if exists('package.json') %}
+  {% if exists('yarn.lock') %}
+    RUN yarn install
+  {% else %}
+    RUN npm install
+  {% endif %}
+{% endif %}
+
+{# Inject dockerfile #}
+{{ nodejs.run | join('\n') }}
+
+{# Define image #}
+{% if not buildpack.next %}
+  ENTRYPOINT ["/entrypoint-node.sh"]
+  {# Run command #}
+  {% if nodejs.cmd %}
+    CMD {{ nodejs.cmd is iterable ? (nodejs.cmd | json_encode) : nodejs.cmd }}
+  {% elseif exists('package.json') %}
+    {% if exists('yarn.lock') %}
+      CMD ["yarn", "start"]
+    {% else %}
+      CMD ["npm", "start"]
+    {% endif %}
+  {% elseif exists('server.js') %}
+    CMD ["node", "server.js"]
+  {% elseif exists('app.js') %}
+    CMD ["node", "app.js"]
+  {% elseif exists('main.js') %}
+    CMD ["node", "main.js"]
+  {% elseif exists('index.js') %}
+    CMD ["node", "index.js"]
+  {% else %}
+    CMD ["node"]
+  {% endif %}
+{% endif %}

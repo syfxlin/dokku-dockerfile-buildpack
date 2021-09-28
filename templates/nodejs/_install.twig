@@ -34,5 +34,4 @@ RUN wget "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz
     && yarn --version
 
 {# Copy entrypoint script #}
-COPY .buildin/entrypoint-node.sh /
-ENTRYPOINT ["/entrypoint-node.sh"]
+COPY {{ copy('nodejs/entrypoint-node.sh') }} /

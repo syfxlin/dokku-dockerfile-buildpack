@@ -33,10 +33,7 @@ RUN mkdir -p /usr/src \
     && wget "https://www.php.net/distributions/php-$PHP_VERSION.tar.xz" -O php.tar.xz
 
 {# Copy build script #}
-COPY .buildin/{{ php.env == 'web' ? 'entrypoint-php-fpm.sh' : 'entrypoint-php.sh' }} /entrypoint-php.sh
-COPY .buildin/docker-php-source /usr/local/bin/docker-php-source
-COPY .buildin/docker-php-ext-* /usr/local/bin/
-COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+COPY {{ copy('php/docker-php-source') }} /usr/local/bin/docker-php-source
 
 {# Build #}
 {# Add build packages #}
@@ -78,7 +75,10 @@ RUN apk add --no-cache --virtual .build-deps \
 		    --with-zlib \
 		    --with-pear \
 		    $(test "$gnuArch" = 's390x-linux-musl' && echo '--without-pcre-jit') \
-        {{ php.env == 'web' ? '--enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data --disable-cgi' : '' }} \
+        --enable-fpm \
+        --with-fpm-user=www-data \
+        --with-fpm-group=www-data \
+        --disable-cgi \
 		    {{ php.configure_args | default('') }} \
     && make -j "$(nproc)" \
     && find -type f -name '*.a' -delete \
@@ -104,51 +104,16 @@ RUN apk add --no-cache --virtual .build-deps \
     {# Test #}
     && php --version
 
-{# Config #}
 {# Config php #}
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
-{# Config fpm #}
-{% if php.env == "web" %}
-RUN cd /usr/local/etc; \
-    if [ -d php-fpm.d ]; then \
-      # for some reason, upstream's php-fpm.conf.default has "include=NONE/etc/php-fpm.d/*.conf"
-      sed 's!=NONE/!=!g' php-fpm.conf.default | tee php-fpm.conf > /dev/null; \
-      cp php-fpm.d/www.conf.default php-fpm.d/www.conf; \
-    else \
-      # PHP 5.x doesn't use "include=" by default, so we'll create our own simple config that mimics PHP 7+ for consistency
-      mkdir php-fpm.d; \
-      cp php-fpm.conf.default php-fpm.d/www.conf; \
-      { \
-        echo '[global]'; \
-        echo 'include=etc/php-fpm.d/*.conf'; \
-      } | tee php-fpm.conf; \
-    fi; \
-    { \
-      echo '[global]'; \
-      echo 'error_log = /proc/self/fd/2'; \
-      echo; echo '; https://github.com/docker-library/php/pull/725#issuecomment-443540114'; echo 'log_limit = 8192'; \
-      echo; \
-      echo '[www]'; \
-      echo '; if we send this to /proc/self/fd/1, it never appears'; \
-      echo 'access.log = /proc/self/fd/2'; \
-      echo; \
-      echo 'clear_env = no'; \
-      echo; \
-      echo '; Ensure worker stdout and stderr are sent to the main error log.'; \
-      echo 'catch_workers_output = yes'; \
-      echo 'decorate_workers_output = no'; \
-    } | tee php-fpm.d/docker.conf; \
-    { \
-      echo '[global]'; \
-      echo 'daemonize = no'; \
-      echo; \
-      echo '[www]'; \
-      echo 'listen = 9000'; \
-    } | tee php-fpm.d/zz-docker.conf
-{% endif %}
+
+{# Copy file #}
+COPY {{ copy('php/entrypoint-php.sh') }} /
+COPY {{ copy('php/docker-php-ext-configure') }} /usr/local/bin/
+COPY {{ copy('php/docker-php-ext-enable') }} /usr/local/bin/
+COPY {{ copy('php/docker-php-ext-install') }} /usr/local/bin/
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 {# Enable extension #}
 RUN docker-php-ext-enable sodium
 RUN install-php-extensions @composer{{ php.composer_version ? '-' + php.composer_version : '' }} {{ php.extensions | join(' ') }}
-
-ENTRYPOINT ["/entrypoint-php.sh"]

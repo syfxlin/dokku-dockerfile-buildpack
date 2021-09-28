@@ -79,7 +79,6 @@ RUN apk add --no-cache --virtual build_deps build-base linux-headers openssl-dev
     && mv /tmp/envsubst /usr/local/bin/
 
 {# Copy entrypoint script #}
-COPY .buildin/entrypoint-nginx.sh /
-COPY .buildin/docker-entrypoint.d /docker-entrypoint.d
-COPY .buildin/nginx.conf /etc/nginx/nginx.conf
-ENTRYPOINT ["/entrypoint-nginx.sh"]
+COPY {{ copy('nginx/entrypoint-nginx.sh') }} /
+COPY {{ copy('nginx/docker-entrypoint.d') }} /docker-entrypoint.d
+COPY {{ copy('nginx/nginx.conf.twig') }} /etc/nginx/nginx.conf

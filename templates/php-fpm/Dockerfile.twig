@@ -1,0 +1,33 @@
+{# Install php-fpm #}
+{% include './_install.twig' %}
+
+{# Copy php-fpm config #}
+{% if exists('.php-fpm.d') %}
+  COPY .php-fpm.d/ /usr/local/etc/php-fpm.d/
+{% endif %}
+
+{# Inject dockerfile #}
+{{ nginx.run_before | join('\n') }}
+
+{# Install nginx #}
+{% include '../nginx/_install.twig' %}
+
+{# Copy nginx config #}
+COPY {{ copy('php-fpm/nginx.conf.twig') }} /etc/nginx/nginx.conf
+{% if exists('.nginx.d') %}
+  COPY .nginx.d/ /etc/nginx/conf.d/
+{% endif %}
+
+{# Inject dockerfile #}
+{{ nginx.run | join('\n') }}
+
+{# Define image #}
+{% if not buildpack.next %}
+  RUN apk add --no-cache supervisor
+  COPY {{ copy('php-fpm/supervisor.conf') }} /etc/supervisor/supervisor.conf
+
+  EXPOSE 80
+  STOPSIGNAL SIGQUIT
+  ENTRYPOINT ["/entrypoint-php-fpm.sh"]
+  CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisor.conf"]
+{% endif %}

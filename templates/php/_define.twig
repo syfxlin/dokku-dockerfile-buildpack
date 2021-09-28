@@ -1,7 +1,0 @@
-{% import '../inject.twig' as i %}
-
-{% if php.env == 'web' %}
-{% include './_run_nginx.twig' %}
-{% else %}
-{% include './_run_php.twig' %}
-{% endif %}
