@@ -14,8 +14,8 @@ dokku plugin:install https://github.com/syfxlin/dokku-dockerfile-buildpack.git d
 该插件会查看项目根目录下是否存在 `.service.yml` 文件，若存在该文件则使用本插件来完成构建操作。
 
 ```yaml
-# .service.yml，见 templates/.service.example.yml
-type: nginx
+# .service.yml，见 templates/<buildpack>/_service.example.yml
+buildpack: nginx
 ```
 
 ## 维护者 Maintainer
