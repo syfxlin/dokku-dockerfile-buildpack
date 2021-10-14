@@ -1,33 +1,59 @@
-{# Install php-fpm #}
-{% include './_install.twig' %}
+{# ===== From PHP ===== #}
+FROM php:{{ php.version | default(__conf.php_fpm.version) }}-fpm-alpine
+{# ===== Install nginx ===== #}
+COPY --from=nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine /etc/nginx /etc/nginx
+COPY --from=nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine /usr/sbin/nginx /usr/sbin/nginx
+COPY --from=nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine /usr/local/bin/envsubst /usr/local/bin/envsubst
+COPY --from=nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine /usr/share/nginx /usr/share/nginx
+COPY --from=nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine /docker-entrypoint.d /docker-entrypoint.d
+COPY --from=nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine /docker-entrypoint.sh /docker-entrypoint.sh
+RUN apk --no-cache add tzdata curl ca-certificates \
+        && runDeps="$( \
+            scanelf --needed --nobanner --format '%n#p' --recursive /usr/ \
+              | tr ',' '\n' \
+              | sort -u \
+              | awk 'system("[ -e /usr/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+            )" \
+        && apk add --no-cache $runDeps \
+        {# Add user #}
+        && addgroup -S nginx \
+        && adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
+        {# Link log #}
+        && mkdir -p /var/log/nginx \
+        && ln -sf /dev/stdout /var/log/nginx/access.log \
+        && ln -sf /dev/stderr /var/log/nginx/error.log
 
+{# ===== Copy configs ===== #}
+{# Copy php config #}
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+{% if exists('.php.d') %}
+  COPY .php.d/ /usr/local/etc/php/conf.d/
+{% endif %}
 {# Copy php-fpm config #}
 {% if exists('.php-fpm.d') %}
   COPY .php-fpm.d/ /usr/local/etc/php-fpm.d/
 {% endif %}
-
-{# Inject dockerfile #}
-{{ nginx.run_before | join('\n') }}
-
-{# Install nginx #}
-{% include '../nginx/_install.twig' %}
-
 {# Copy nginx config #}
 COPY {{ copy('php-fpm/nginx.conf.twig') }} /etc/nginx/nginx.conf
 {% if exists('.nginx.d') %}
   COPY .nginx.d/ /etc/nginx/conf.d/
 {% endif %}
 
-{# Inject dockerfile #}
-{{ nginx.run | join('\n') }}
+{# ===== Supervisor ===== #}
+RUN apk add --no-cache supervisor
+COPY {{ copy('php-fpm/supervisor.conf') }} /etc/supervisor/supervisor.conf
 
-{# Define image #}
-{% if not buildpack.next %}
-  RUN apk add --no-cache supervisor
-  COPY {{ copy('php-fpm/supervisor.conf') }} /etc/supervisor/supervisor.conf
+EXPOSE 80
+STOPSIGNAL SIGQUIT
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisor.conf"]
 
-  EXPOSE 80
-  STOPSIGNAL SIGQUIT
-  ENTRYPOINT ["/entrypoint-php-fpm.sh"]
-  CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisor.conf"]
-{% endif %}
+{# ===== Install extensions and composer ===== #}
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions @composer{{ php.composer_version ? '-' + php.composer_version : '' }} {{ php.extensions | join(' ') }}
+
+{# ===== Copy project ===== #}
+WORKDIR /app
+COPY . .
+
+{# ===== Inject dockerfile ===== #}
+{{ php.run | join('\n') }}

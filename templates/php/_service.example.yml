@@ -1,0 +1,9 @@
+buildpack: php
+php:
+  version: 8
+  composer_version: 1
+  extensions:
+    - gd
+  run:
+    - RUN apk --no-cache add git
+  cmd: ["php", "example.php"]

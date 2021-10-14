@@ -1,0 +1,16 @@
+buildpack: nginx
+env_file: .env
+nginx:
+  version: mainline
+  charset: utf-8
+  root: public
+  index: index.html
+  error_page:
+    404: 404/
+  basic_auth: /etc/nginx/.httpasswd
+  canonical_host: ixk.me
+  dotfile: true
+  disable_cache: true
+  disable_try: true
+  run:
+    - RUN apk --no-cache add git

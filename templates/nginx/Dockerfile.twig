@@ -1,32 +1,17 @@
-{% include '../base.twig' %}
+{# ===== From nginx ===== #}
+FROM nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine
 
-{# Inject dockerfile #}
-{{ nginx.run_before | join('\n') }}
-
-{# Install nginx #}
-{% include './_install.twig' %}
-
-{# Copy project #}
-WORKDIR /app
-{# Copy nginx root #}
-{% set nginx_root = nginx.root | default('public') %}
-{% if buildpack.prev %}
-  COPY --from={{ buildpack.prev }}-builder /app/{{ nginx_root }} ./{{ nginx_root }}
-{% else %}
-  COPY ./{{ nginx_root }} ./{{ nginx_root }}
-{% endif %}
-{# Copy nginx config #}
+{# ===== Config ===== #}
+COPY {{ copy('nginx/nginx.conf.twig') }} /etc/nginx/nginx.conf
+{# Extension config #}
 {% if exists('.nginx.d') %}
   COPY .nginx.d/ /etc/nginx/conf.d/
 {% endif %}
 
-{# Inject dockerfile #}
-{{ nginx.run | join('\n') }}
+{# ===== Copy project ===== #}
+WORKDIR /app
+{% set nginx_root = nginx.root | default('public') %}
+COPY ./{{ nginx_root }} ./{{ nginx_root }}
 
-{# Define image #}
-{% if not buildpack.next %}
-  EXPOSE 80
-  STOPSIGNAL SIGQUIT
-  ENTRYPOINT ["/entrypoint-nginx.sh"]
-  CMD ["nginx", "-g", "daemon off;"]
-{% endif %}
+{# ===== Inject dockerfile ===== #}
+{{ nginx.run | join('\n') }}

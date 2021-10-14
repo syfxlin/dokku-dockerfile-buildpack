@@ -1,10 +1,8 @@
 nginx:
-  version: 1.21.3
-node:
-  version: 14.17.6
-  yarn_version: 1.22.5
+  version: mainline
+nodejs:
+  version: lts
 php:
-  version: 8.0.10
-php-fpm:
-  depend:
-    - php
+  version: 8
+php_fpm:
+  version: 8

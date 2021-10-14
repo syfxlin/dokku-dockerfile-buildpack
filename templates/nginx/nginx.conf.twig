@@ -11,13 +11,13 @@ events {
 include /etc/nginx/conf.d/*-root.conf;
 
 http {
-  server_tokens     off;
-  include           /etc/nginx/mime.types;
-  default_type      application/octet-stream;
+  server_tokens      off;
+  include            /etc/nginx/mime.types;
+  default_type       application/octet-stream;
 
-  log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                    '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for"';
+  log_format  main   '$remote_addr - $remote_user [$time_local] "$request" '
+                     '$status $body_bytes_sent "$http_referer" '
+                     '"$http_user_agent" "$http_x_forwarded_for"';
 
   access_log         /var/log/nginx/access.log  main;
 
@@ -35,8 +35,8 @@ http {
     set_real_ip_from       0.0.0.0/0;
     real_ip_recursive      on;
 
-    root /app/{{ nginx.root | default('public') }};
-    index {{ nginx.index | default('index.html index.htm') }};
+    root                   /app/{{ nginx.root | default('public') }};
+    index                  {{ nginx.index | default('index.html index.htm') }};
 
     {% if nginx.error_page %}
       {% for code, page in nginx.error_page %}

@@ -1,37 +1,34 @@
-{% include '../base.twig' %}
+{# ===== From php ===== #}
+FROM php:{{ php.version | default(__conf.php.version) }}-cli-alpine
 
-{# Inject dockerfile #}
-{{ php.run_before | join('\n') }}
+{# ===== Install extensions and composer ===== #}
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions @composer{{ php.composer_version ? '-' + php.composer_version : '' }} {{ php.extensions | join(' ') }}
 
-{# Install php #}
-{% include './_install.twig' %}
-
-{# Copy project #}
-WORKDIR /app
-COPY . .
-
-{# Copy php config #}
+{# ===== Copy php config ===== #}
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 {% if exists('.php.d') %}
   COPY .php.d/ /usr/local/etc/php/conf.d/
 {% endif %}
 
-{# Inject dockerfile #}
+{# ===== Copy project ===== #}
+WORKDIR /app
+COPY . .
+
+{# ===== Inject dockerfile ===== #}
 {{ php.run | join('\n') }}
 
-{# Define image #}
-{% if not buildpack.next %}
-  ENTRYPOINT ["/entrypoint-php.sh"]
-  {% if php.cmd %}
-    CMD {{ php.cmd is iterable ? (php.cmd | json_encode) : php.cmd }}
-  {% elseif exists('server.php') %}
-    CMD ["php", "server.php"]
-  {% elseif exists('app.php') %}
-    CMD ["php", "app.php"]
-  {% elseif exists('main.php') %}
-    CMD ["php", "main.php"]
-  {% elseif exists('index.php') %}
-    CMD ["php", "index.php"]
-  {% else %}
-    CMD ["php"]
-  {% endif %}
+{# Set cmd #}
+{% if php.cmd %}
+  CMD {{ php.cmd is iterable ? (php.cmd | json_encode) : php.cmd }}
+{% elseif exists('server.php') %}
+  CMD ["php", "server.php"]
+{% elseif exists('app.php') %}
+  CMD ["php", "app.php"]
+{% elseif exists('main.php') %}
+  CMD ["php", "main.php"]
+{% elseif exists('index.php') %}
+  CMD ["php", "index.php"]
+{% else %}
+  CMD ["php"]
 {% endif %}

@@ -1,0 +1,57 @@
+{# ===== From nodejs ===== #}
+FROM node:{{ nodejs.version | default(__conf.nodejs.version) }}-alpine as builder
+
+{# ===== Copy package.json and lock file ===== #}
+WORKDIR /app
+COPY package*.json yarn.* ./
+
+{# ===== Inject dockerfile ===== #}
+{{ nodejs.run_before_install | join('\n') }}
+
+{# ===== Node modules install ===== #}
+{% if exists('package.json') %}
+  {% if exists('yarn.lock') %}
+    RUN yarn install --frozen-lockfile && yarn cache clean
+  {% else %}
+    RUN npm ci && npm cache clean
+  {% endif %}
+{% endif %}
+
+{# ===== Inject dockerfile ===== #}
+{{ nodejs.run_after_install | join('\n') }}
+
+{# ===== Copy project ===== #}
+COPY . .
+
+{# ===== Inject dockerfile ===== #}
+{{ nodejs.run_before_build | join('\n') }}
+
+{# ===== Node modules build ===== #}
+{% if exists('package.json') %}
+  {% if exists('yarn.lock') %}
+    RUN yarn run build
+  {% else %}
+    RUN npm run build
+  {% endif %}
+{% endif %}
+
+{# ===== Inject dockerfile ===== #}
+{{ nodejs.run | join('\n') }}
+
+{# ===== From nginx ===== #}
+FROM nginx:{{ nginx.version | default(__conf.nginx.version) }}-alpine
+
+{# ===== Config ===== #}
+COPY {{ copy('nginx/nginx.conf.twig') }} /etc/nginx/nginx.conf
+{# Extension config #}
+{% if exists('.nginx.d') %}
+  COPY .nginx.d/ /etc/nginx/conf.d/
+{% endif %}
+
+{# ===== Copy project ===== #}
+WORKDIR /app
+{% set nginx_root = nginx.root | default('public') %}
+COPY --from=builder /app/{{ nginx_root }} ./{{ nginx_root }}
+
+{# ===== Inject dockerfile ===== #}
+{{ nginx.run | join('\n') }}

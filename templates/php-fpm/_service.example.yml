@@ -1,0 +1,20 @@
+buildpack: php
+php:
+  version: 8
+  composer_version: 1
+  extensions:
+    - gd
+  run:
+    - RUN apk --no-cache add git
+nginx:
+  version: mainline
+    charset: utf-8
+    root: public
+    index: index.html
+    error_page:
+      404: 404/
+    basic_auth: /etc/nginx/.httpasswd
+    canonical_host: ixk.me
+    dotfile: true
+    disable_cache: true
+    disable_try: true

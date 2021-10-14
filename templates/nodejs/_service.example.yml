@@ -1,0 +1,11 @@
+buildpack: nodejs
+env_file: .env
+nodejs:
+  version: lts
+  run_before_install:
+    - RUN apk --no-cache add git
+  run_after_install:
+    - RUN apk --no-cache add git
+  run:
+    - RUN apk --no-cache add git
+  cmd: ["node", "example.js"]

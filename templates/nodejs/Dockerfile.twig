@@ -1,48 +1,48 @@
-{% include '../base.twig' %}
+{# ===== From nodejs ===== #}
+FROM node:{{ nodejs.version | default(__conf.nodejs.version) }}-alpine
 
-{# Inject dockerfile #}
-{{ nodejs.run_before | join('\n') }}
-
-{# Install nodejs #}
-{% include './_install.twig' %}
-
-{# Copy project #}
+{# ===== Copy package.json and lock file ===== #}
 WORKDIR /app
-COPY . .
+COPY package*.json yarn.* ./
 
-{# node_modules install #}
+{# ===== Inject dockerfile ===== #}
+{{ nodejs.run_before_install | join('\n') }}
+
+{# ===== Node modules install ===== #}
 {% if exists('package.json') %}
   {% if exists('yarn.lock') %}
-    RUN yarn install
+    RUN yarn install --production --frozen-lockfile && yarn cache clean
   {% else %}
-    RUN npm install
+    RUN npm ci --only=production && npm cache clean
   {% endif %}
 {% endif %}
 
-{# Inject dockerfile #}
+{# ===== Inject dockerfile ===== #}
+{{ nodejs.run_after_install | join('\n') }}
+
+{# ===== Copy project ===== #}
+COPY . .
+
+{# ===== Inject dockerfile ===== #}
 {{ nodejs.run | join('\n') }}
 
-{# Define image #}
-{% if not buildpack.next %}
-  ENTRYPOINT ["/entrypoint-node.sh"]
-  {# Run command #}
-  {% if nodejs.cmd %}
-    CMD {{ nodejs.cmd is iterable ? (nodejs.cmd | json_encode) : nodejs.cmd }}
-  {% elseif exists('package.json') %}
-    {% if exists('yarn.lock') %}
-      CMD ["yarn", "start"]
-    {% else %}
-      CMD ["npm", "start"]
-    {% endif %}
-  {% elseif exists('server.js') %}
-    CMD ["node", "server.js"]
-  {% elseif exists('app.js') %}
-    CMD ["node", "app.js"]
-  {% elseif exists('main.js') %}
-    CMD ["node", "main.js"]
-  {% elseif exists('index.js') %}
-    CMD ["node", "index.js"]
+{# ===== Set cmd ===== #}
+{% if nodejs.cmd %}
+  CMD {{ nodejs.cmd is iterable ? (nodejs.cmd | json_encode) : nodejs.cmd }}
+{% elseif exists('package.json') %}
+  {% if exists('yarn.lock') %}
+    CMD ["yarn", "start"]
   {% else %}
-    CMD ["node"]
+    CMD ["npm", "start"]
   {% endif %}
+{% elseif exists('server.js') %}
+  CMD ["node", "server.js"]
+{% elseif exists('app.js') %}
+  CMD ["node", "app.js"]
+{% elseif exists('main.js') %}
+  CMD ["node", "main.js"]
+{% elseif exists('index.js') %}
+  CMD ["node", "index.js"]
+{% else %}
+  CMD ["node"]
 {% endif %}

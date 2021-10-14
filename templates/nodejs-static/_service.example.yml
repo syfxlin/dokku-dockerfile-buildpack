@@ -1,0 +1,26 @@
+buildpack: nodejs
+env_file: .env
+nodejs:
+  version: lts
+  run_before_install:
+    - RUN apk --no-cache add git
+  run_after_install:
+    - RUN apk --no-cache add git
+  run_before_build:
+    - RUN apk --no-cache add git
+  run:
+    - RUN apk --no-cache add git
+nginx:
+  version: mainline
+  charset: utf-8
+  root: public
+  index: index.html
+  error_page:
+    404: 404/
+  basic_auth: /etc/nginx/.httpasswd
+  canonical_host: ixk.me
+  dotfile: true
+  disable_cache: true
+  disable_try: true
+  run:
+    - RUN apk --no-cache add git
